@@ -1,0 +1,45 @@
+# --------------------
+# Python Specific Files
+# --------------------
+# Byte-code files
+*.pyc
+__pycache__/
+
+# Virtual Environment (Poetry's location)
+.venv/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# --------------------
+# Project Specific
+# --------------------
+# Secrets and Environment Variables (CRUCIAL for security)
+.env
+
+# Flask specific files
+instance/
+
+# --------------------
+# Tooling, tests, and editor cruft
+# --------------------
+# pytest cache
+.pytest_cache/
+
+# Coverage reports
+.coverage
+coverage.xml
+htmlcov/
+
+# Type checker / linter caches
+.mypy_cache/
+.ruff_cache/
+
+# Editor/OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

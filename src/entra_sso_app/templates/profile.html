@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Your Microsoft Profile</h1>
+
+  {% if profile %}
+    <ul>
+      <li><strong>Name:</strong> {{ profile.displayName }}</li>
+      <li><strong>Email:</strong> {{ profile.mail or profile.userPrincipalName }}</li>
+      <li><strong>Job title:</strong> {{ profile.jobTitle or '—' }}</li>
+      <li><strong>Id:</strong> {{ profile.id }}</li>
+    </ul>
+    {% if claims %}
+      <h2>Debug: ID token claims</h2>
+      <pre>{{ claims | tojson(indent=2) }}</pre>
+    {% endif %}
+  {% else %}
+    <p>Could not load profile information from Microsoft Graph.</p>
+  {% endif %}
+{% endblock %}

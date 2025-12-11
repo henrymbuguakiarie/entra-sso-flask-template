@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  {% if not user %}
+    <h1>Welcome</h1>
+    <p>This app uses Microsoft Entra ID (Azure AD) for Single Sign-On.</p>
+    <p>
+      <a class="btn" href="{{ url_for('auth.login') }}">Sign in with Microsoft</a>
+    </p>
+  {% else %}
+    <h1>Hello, {{ user.name or user.preferred_username }}!</h1>
+    <p>You are signed in with Microsoft Entra ID.</p>
+    <p>
+      <a class="btn" href="{{ url_for('main.profile') }}">View Profile</a>
+    </p>
+  {% endif %}
+{% endblock %}
