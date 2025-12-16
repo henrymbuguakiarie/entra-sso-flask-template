@@ -139,6 +139,89 @@ APP_ENV=development
 LOG_LEVEL=INFO
 ```
 
+## Client secret vs client certificate
+
+By default, the app authenticates to Entra ID using `CLIENT_SECRET`.
+
+For stronger credentials, you can instead configure a client certificate. When
+the certificate settings are present, the app will **prefer the certificate**
+over the secret; the secret remains as a fallback if the certificate cannot be
+loaded.
+
+Add the following to your `.env` (values are examples):
+
+```env
+# Path to a PEM-encoded private key/certificate file.
+ENTRA_CLIENT_CERT_PATH=/path/to/your/private-key.pem
+
+# Thumbprint of the certificate as configured in Entra ID.
+ENTRA_CLIENT_CERT_THUMBPRINT=<your-certificate-thumbprint>
+
+# Optional password if the private key is encrypted.
+ENTRA_CLIENT_CERT_PASSWORD=<your-certificate-password>
+```
+
+Notes:
+
+- If both `CLIENT_SECRET` and the certificate variables are configured, the
+   certificate is used first.
+- On startup, the app validates that at least one of `CLIENT_SECRET` or the
+   certificate settings is configured, and that the certificate file exists
+   when a certificate is selected. This makes misconfigurations fail fast.
+- The sample assumes a PEM file. If you export a PFX from Entra, convert it to
+   a PEM private key/certificate file before pointing `ENTRA_CLIENT_CERT_PATH`
+   at it.
+
+### Creating a local client certificate and uploading it to Entra
+
+You can use a self-signed certificate for local development. The private key
+stays on your machine (referenced by `ENTRA_CLIENT_CERT_PATH`) and only the
+public certificate is uploaded to Entra.
+
+1. **Generate a self-signed certificate locally (PEM files)**
+
+   From the project root (or any folder), run:
+
+   ```bash
+   openssl req -x509 -newkey rsa:2048 -nodes \
+       -keyout certs/entra-app-private.key -out certs/entra-app-cert.pem \
+       -days 90 -subj "/CN=localhost"
+   ```
+
+   This creates:
+
+    - `certs/entra-app-private.key`: private key (keep this secret, do not upload).
+    - `certs/entra-app-cert.pem`: public certificate.
+
+2. **Point the app at the private key**
+
+   In your `.env` file, reference the private key and choose a password if you
+   encrypted it (omit the password if the key is not encrypted):
+
+   ```env
+   ENTRA_CLIENT_CERT_PATH=/absolute/path/to/your/repo/certs/entra-app-private.key
+   ENTRA_CLIENT_CERT_THUMBPRINT=<thumbprint-from-entra-portal>
+   # ENTRA_CLIENT_CERT_PASSWORD=<optional-password-if-key-is-encrypted>
+   ```
+
+3. **Upload the public certificate to Entra**
+
+   In the Microsoft Entra Admin center center:
+
+   - Go to **Microsoft Entra ID → App registrations → Your app**.
+   - Select **Certificates & secrets → Certificates → Upload certificate**.
+   - Upload `entra-app-cert.pem` (or a `.cer` file exported from it).
+   - Save the changes.
+
+4. **Copy the certificate thumbprint into `.env`**
+
+   After upload, the portal shows the certificate **Thumbprint**. Copy that
+   value and set it as `ENTRA_CLIENT_CERT_THUMBPRINT` in `.env`.
+
+Once these steps are complete, the app will authenticate using the certificate
+instead of the client secret (if both are configured, the certificate is
+preferred).
+
 ## Token store: how tokens are stored and why
 
 The template uses a small abstraction in `entra_sso_app.token_store`:

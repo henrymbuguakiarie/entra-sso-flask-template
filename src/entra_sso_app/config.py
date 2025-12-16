@@ -22,6 +22,12 @@ class BaseConfig:
     CLIENT_ID = os.environ.get("CLIENT_ID")
     CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 
+    # Optional: certificate-based credentials. When configured, the app will
+    # prefer this certificate over the client secret for MSAL auth.
+    CLIENT_CERT_PATH = os.environ.get("ENTRA_CLIENT_CERT_PATH")
+    CLIENT_CERT_THUMBPRINT = os.environ.get("ENTRA_CLIENT_CERT_THUMBPRINT")
+    CLIENT_CERT_PASSWORD = os.environ.get("ENTRA_CLIENT_CERT_PASSWORD")
+
     # Base URL for the Microsoft identity platform
     AUTHORITY_BASE_URL = os.environ.get("AUTHORITY_BASE_URL")
 
@@ -59,7 +65,6 @@ class BaseConfig:
             "SECRET_KEY",
             "TENANT_ID",
             "CLIENT_ID",
-            "CLIENT_SECRET",
             "AUTHORITY_BASE_URL",
             "AUTHORITY",
             "SCOPE",
@@ -69,6 +74,24 @@ class BaseConfig:
             raise RuntimeError(
                 f"Missing required configuration values: {', '.join(missing)}. "
                 "Check your environment variables or .env file."
+            )
+
+        # Ensure we have at least one form of client credential.
+        has_secret = bool(cls.CLIENT_SECRET)
+        has_cert = bool(cls.CLIENT_CERT_PATH and cls.CLIENT_CERT_THUMBPRINT)
+
+        if not (has_secret or has_cert):
+            raise RuntimeError(
+                "You must configure either CLIENT_SECRET or "
+                "ENTRA_CLIENT_CERT_PATH and ENTRA_CLIENT_CERT_THUMBPRINT."
+            )
+
+        # If a certificate is configured, ensure the file exists so startup
+        # fails fast rather than at the first login attempt.
+        if has_cert and not os.path.exists(cls.CLIENT_CERT_PATH):
+            raise RuntimeError(
+                f"Client certificate file not found at {cls.CLIENT_CERT_PATH}. "
+                "Check ENTRA_CLIENT_CERT_PATH or use CLIENT_SECRET instead."
             )
 
 

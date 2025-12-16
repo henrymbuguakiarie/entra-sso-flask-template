@@ -19,6 +19,9 @@ build/
 # Secrets and Environment Variables (CRUCIAL for security)
 .env
 
+# Local development certificates (do not commit private keys)
+certs/
+
 # Flask specific files
 instance/
 

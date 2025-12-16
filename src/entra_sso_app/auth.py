@@ -8,11 +8,49 @@ from .token_store import token_store
 auth_bp = Blueprint("auth", __name__)
 
 
+def _build_client_credential():
+    """Build the MSAL client credential.
+
+    Prefer a certificate when configured; otherwise fall back to CLIENT_SECRET.
+    """
+
+    cert_path = Config.CLIENT_CERT_PATH
+    thumbprint = Config.CLIENT_CERT_THUMBPRINT
+    password = Config.CLIENT_CERT_PASSWORD
+
+    if cert_path and thumbprint:
+        try:
+            with open(cert_path, "rb") as cert_file:
+                private_key = cert_file.read()
+
+            current_app.logger.info(
+                "Using client certificate for MSAL authentication (thumbprint=%s)",
+                thumbprint,
+            )
+
+            credential: dict[str, object] = {
+                "private_key": private_key,
+                "thumbprint": thumbprint,
+            }
+            if password:
+                credential["passphrase"] = password.encode("utf-8")
+
+            return credential
+        except OSError as exc:  # pragma: no cover - error path exercised in tests
+            current_app.logger.warning(
+                "Failed to load client certificate from %s: %s. Falling back to CLIENT_SECRET.",
+                cert_path,
+                exc,
+            )
+
+    return Config.CLIENT_SECRET
+
+
 def _build_msal_app() -> msal.ConfidentialClientApplication:
     return msal.ConfidentialClientApplication(
         Config.CLIENT_ID,
         authority=Config.AUTHORITY,
-        client_credential=Config.CLIENT_SECRET,
+        client_credential=_build_client_credential(),
     )
 
 

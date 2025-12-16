@@ -164,3 +164,66 @@ def test_profile_can_show_id_token_claims(monkeypatch, app, client):
     # Debug section should contain the JSON-encoded claims.
     assert b"claims@example.com" in response.data
     assert b"my-client-id" in response.data
+
+
+def test_build_client_credential_uses_secret_when_no_cert(monkeypatch):
+    """When no certificate is configured, the client secret is used."""
+
+    import entra_sso_app.auth as auth_module
+
+    class DummyConfig:
+        CLIENT_SECRET = "secret-value"
+        CLIENT_CERT_PATH = None
+        CLIENT_CERT_THUMBPRINT = None
+        CLIENT_CERT_PASSWORD = None
+
+    monkeypatch.setattr(auth_module, "Config", DummyConfig)
+
+    credential = auth_module._build_client_credential()
+    assert credential == "secret-value"
+
+
+def test_build_client_credential_prefers_certificate_when_available(tmp_path, monkeypatch, app):
+    """When a certificate is configured, it is preferred over the secret."""
+
+    import entra_sso_app.auth as auth_module
+
+    cert_file = tmp_path / "client-cert.pem"
+    cert_file.write_bytes(b"dummy-private-key")
+
+    class DummyConfig:
+        CLIENT_SECRET = "secret-value"
+        CLIENT_CERT_PATH = str(cert_file)
+        CLIENT_CERT_THUMBPRINT = "CERT-THUMBPRINT"
+        CLIENT_CERT_PASSWORD = ""
+
+    monkeypatch.setattr(auth_module, "Config", DummyConfig)
+
+    with app.app_context():
+        credential = auth_module._build_client_credential()
+
+    assert isinstance(credential, dict)
+    assert credential["thumbprint"] == "CERT-THUMBPRINT"
+    assert credential["private_key"] == b"dummy-private-key"
+
+
+def test_build_client_credential_falls_back_to_secret_if_cert_unreadable(tmp_path, monkeypatch, app):
+    """If the certificate cannot be read, fall back to the secret."""
+
+    import entra_sso_app.auth as auth_module
+
+    # Point to a non-existent file to trigger the fallback path.
+    missing_file = tmp_path / "missing-cert.pem"
+
+    class DummyConfig:
+        CLIENT_SECRET = "secret-value"
+        CLIENT_CERT_PATH = str(missing_file)
+        CLIENT_CERT_THUMBPRINT = "CERT-THUMBPRINT"
+        CLIENT_CERT_PASSWORD = ""
+
+    monkeypatch.setattr(auth_module, "Config", DummyConfig)
+
+    with app.app_context():
+        credential = auth_module._build_client_credential()
+
+    assert credential == "secret-value"
